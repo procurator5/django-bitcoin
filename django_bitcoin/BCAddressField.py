@@ -3,7 +3,7 @@
 #
 import re
 from django import forms
-from django.forms.util import ValidationError
+from django.forms.utils import ValidationError
 import hashlib
 
 
@@ -55,7 +55,7 @@ def b58encode(v):
     """ encode v, which is a string of bytes, to base58.
     """
 
-    long_value = 0L
+    long_value = 0
     for (i, c) in enumerate(v[::-1]):
         long_value += (256**i) * ord(c)
 
@@ -78,7 +78,7 @@ def b58encode(v):
 def b58decode(v, length):
     """ decode v into a string of len bytes
     """
-    long_value = 0L
+    long_value = 0
     for (i, c) in enumerate(v[::-1]):
         long_value += __b58chars.find(c) * (__b58base**i)
 
@@ -104,7 +104,7 @@ def b58decode(v, length):
 def b36encode(number, alphabet='0123456789abcdefghijklmnopqrstuvwxyz'):
     """Converts an integer to a base36 string."""
     if not isinstance(number, (int, long)):
-        long_value = 0L
+        long_value = 0
         for (i, c) in enumerate(number[::-1]):
             long_value += (256**i) * ord(c)
         number = long_value

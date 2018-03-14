@@ -24,12 +24,10 @@ import os, sys, time
 import json
 import logging
 import struct
-import StringIO
 import traceback
 import socket
 import types
 import string
-import exceptions
 import hashlib
 import random
 import math
@@ -743,12 +741,12 @@ class Crypter_pure(object):
 
 # secp256k1
 
-_p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2FL
-_r = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141L
-_b = 0x0000000000000000000000000000000000000000000000000000000000000007L
-_a = 0x0000000000000000000000000000000000000000000000000000000000000000L
-_Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798L
-_Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8L
+_p = int("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F", 16)
+_r = int("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+_b = int("0x0000000000000000000000000000000000000000000000000000000000000007", 16)
+_a = int("0x0000000000000000000000000000000000000000000000000000000000000000", 16)
+_Gx = int("0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16)
+_Gy = int("0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8", 16)
 
 # python-ecdsa code (EC_KEY implementation)
 
@@ -799,7 +797,7 @@ class Point( object ):
     def __mul__( self, other ):
         def leftmost_bit( x ):
             assert x > 0
-            result = 1L
+            result = int(1)
             while result <= x: result = 2 * result
             return result / 2
 
@@ -875,11 +873,11 @@ class Public_key( object ):
         self.point = point
         n = generator.order()
         if not n:
-            raise RuntimeError, "Generator point must have order."
+            raise RuntimeError("Generator point must have order.")
         if not n * point == INFINITY:
-            raise RuntimeError, "Generator point order is bad."
+            raise RuntimeError("Generator point order is bad.")
         if point.x() < 0 or n <= point.x() or point.y() < 0 or n <= point.y():
-            raise RuntimeError, "Generator point has x or y out of range."
+            raise RuntimeError("Generator point has x or y out of range.")
 
     def verifies( self, hash, signature ):
         G = self.generator
@@ -914,10 +912,10 @@ class Private_key( object ):
         k = random_k % n
         p1 = k * G
         r = p1.x()
-        if r == 0: raise RuntimeError, "amazingly unlucky random number r"
+        if r == 0: raise RuntimeError("amazingly unlucky random number r")
         s = ( inverse_mod( k, n ) * \
                     ( hash + ( self.secret_multiplier * r ) % n ) ) % n
-        if s == 0: raise RuntimeError, "amazingly unlucky random number s"
+        if s == 0: raise RuntimeError("amazingly unlucky random number s")
         return Signature( r, s )
 
 class EC_KEY(object):
@@ -1002,7 +1000,7 @@ def b58encode(v):
     """ encode v, which is a string of bytes, to base58.        
     """
 
-    long_value = 0L
+    long_value = long(0)
     for (i, c) in enumerate(v[::-1]):
         long_value += (256**i) * ord(c)
 
@@ -1025,7 +1023,7 @@ def b58encode(v):
 def b58decode(v, length):
     """ decode v into a string of len bytes
     """
-    long_value = 0L
+    long_value = long(0)
     for (i, c) in enumerate(v[::-1]):
         long_value += __b58chars.find(c) * (__b58base**i)
 
@@ -1352,7 +1350,7 @@ def parse_wallet(db, item_callback):
             
             item_callback(type, d)
 
-        except Exception, e:
+        except Exception as e:
             traceback.print_exc()
             print("ERROR parsing wallet.dat, type %s" % type)
             print("key data in hex: %s"%key.encode('hex_codec'))
@@ -1427,12 +1425,12 @@ def update_wallet(db, type, data):
             for h in d['hashes']:
                 vds.write(h)
         else:
-            print "Unknown key type: "+type
+            print("Unknown key type: "+type)
 
         # Write the key/value pair to the database
         db.put(kds.input, vds.input)
 
-    except Exception, e:
+    except Exception as e:
         print("ERROR writing to wallet.dat, type %s"%type)
         print("data dictionary: %r"%data)
         traceback.print_exc()
@@ -1608,8 +1606,8 @@ def importprivkey(db, sec):
     public_key = GetPubKey(pkey, compressed)
     addr = public_key_to_bc_address(public_key)
 
-    print "Address: %s" % addr
-    print "Privkey: %s" % SecretToASecret(secret, compressed)
+    print("Address: %s" % addr)
+    print("Privkey: %s" % SecretToASecret(secret, compressed))
 
     global crypter, password, json_db
 
@@ -1633,9 +1631,9 @@ def importprivkey(db, sec):
     return False
 
 def privkey2address(sec):
-    print "trying import", sec
+    print("trying import", sec)
     pkey = regenerate_key(sec)
-    print pkey
+    print(pkey)
     if not pkey:
         return None
 
@@ -1670,7 +1668,7 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.dump is None and options.key is None:
-        print "A mandatory option is missing\n"
+        print("A mandatory option is missing\n")
         parser.print_help()
         sys.exit(1)
 
@@ -1693,22 +1691,22 @@ def main():
     read_wallet(json_db, db_env, True, True, "")
 
     if json_db.get('minversion') > max_version:
-        print "Version mismatch (must be <= %d)" % max_version
+        print("Version mismatch (must be <= %d)" % max_version)
         exit(1)
 
     if options.dump:
-        print json.dumps(json_db, sort_keys=True, indent=4)
+        print(json.dumps(json_db, sort_keys=True, indent=4))
 
     elif options.key:
         if options.key in private_keys:
-            print "Already exists"
+            print("Already exists")
         else:    
             db = open_wallet(db_env, writable=True)
 
             if importprivkey(db, options.key):
-                print "Imported successfully"
+                print("Imported successfully")
             else:
-                print "Bad private key"
+                print("Bad private key")
 
             db.close()
 

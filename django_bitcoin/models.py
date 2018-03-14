@@ -21,12 +21,14 @@ import django.dispatch
 
 import jsonrpc
 
-from BCAddressField import is_valid_btc_address
+from django_bitcoin.BCAddressField import is_valid_btc_address
 
 from django.db import transaction as db_transaction
 from celery import task
 from distributedlock import distributedlock, MemcachedLock, LockNotAcquiredError
 from django.db.models import Avg, Max, Min, Sum
+
+distributedlock.DEBUG=False
 
 def CacheLock(key, lock=None, blocking=True, timeout=10000):
     if lock is None:
@@ -72,15 +74,15 @@ class Transaction(models.Model):
 class DepositTransaction(models.Model):
 
     created_at = models.DateTimeField(default=datetime.datetime.now)
-    address = models.ForeignKey('BitcoinAddress')
+    address = models.ForeignKey('BitcoinAddress', on_delete=models.DO_NOTHING)
 
     amount = models.DecimalField(max_digits=16, decimal_places=8, default=Decimal(0))
     description = models.CharField(max_length=100, blank=True, null=True, default=None)
 
-    wallet = models.ForeignKey("Wallet")
+    wallet = models.ForeignKey("Wallet", on_delete=models.DO_NOTHING)
 
     under_execution = models.BooleanField(default=False) # execution fail
-    transaction = models.ForeignKey('WalletTransaction', null=True, default=None)
+    transaction = models.ForeignKey('WalletTransaction', null=True, default=None, on_delete=models.DO_NOTHING)
 
     confirmations = models.IntegerField(default=0)
     txid = models.CharField(max_length=100, blank=True, null=True)
@@ -197,7 +199,6 @@ def filter_doubles(outgoing_list):
 
 
 @task()
-@db_transaction.autocommit
 def process_outgoing_transactions():
     if OutgoingTransaction.objects.filter(executed_at=None, expires_at__lte=datetime.datetime.now()).count()>0 or \
         OutgoingTransaction.objects.filter(executed_at=None).count()>6:
@@ -261,7 +262,7 @@ class BitcoinAddress(models.Model):
     least_received_confirmed = models.DecimalField(max_digits=16, decimal_places=8, default=Decimal(0))
     label = models.CharField(max_length=50, blank=True, null=True, default=None)
 
-    wallet = models.ForeignKey("Wallet", null=True, related_name="addresses")
+    wallet = models.ForeignKey("Wallet", null=True, related_name="addresses", on_delete=models.DO_NOTHING)
 
     migrated_to_transactions = models.BooleanField(default=True)
 
@@ -323,7 +324,7 @@ class BitcoinAddress(models.Model):
 
     def query_bitcoin_deposit(self, deposit_tx):
         if deposit_tx.transaction:
-            print "Already has a transaction!"
+            print ("Already has a transaction!")
             return
         with CacheLock('query_bitcoind'):
             r = bitcoind.total_received(self.address, minconf=settings.BITCOIN_MINIMUM_CONFIRMATIONS)
@@ -353,9 +354,9 @@ class BitcoinAddress(models.Model):
                         DepositTransaction.objects.select_for_update().filter(id=deposit_tx.id).update(transaction=wt)
                     self.wallet.update_last_balance(deposit_tx.amount)
                 else:
-                    print "transaction not updated!"
+                    print ("transaction not updated!")
             else:
-                print "This path should not occur, but whatever."
+                print ("This path should not occur, but whatever.")
                 # raise Exception("Should be never this way")
             return r
 
@@ -395,7 +396,7 @@ def new_bitcoin_address():
             if len(bp) < 1:
                 refill_payment_queue()
                 db_transaction.commit()
-                print "refilling queue...", bp
+                print ("refilling queue...", bp)
             else:
                 bp = bp[0]
                 updated = BitcoinAddress.objects.select_for_update().filter(Q(id=bp.id) & Q(active=False) & Q(wallet__isnull=True) & \
@@ -404,7 +405,7 @@ def new_bitcoin_address():
                 if updated:
                     return bp
                 else:
-                    print "wallet transaction concurrency:", bp.address
+                    print ("wallet transaction concurrency:", bp.address)
 
 
 class Payment(models.Model):
@@ -464,7 +465,7 @@ class Payment(models.Model):
     def withdraw_proportion_all(cls, address, bitcoin_payments_proportions):
         """hash BitcoinPayment -> Proportion"""
         final_amount=Decimal("0.0")
-        print bitcoin_payments_proportions
+        print (bitcoin_payments_proportions)
         for bp, proportion in bitcoin_payments_proportions.iteritems():
             am=bp.calculate_amount(proportion)
             final_amount+=am
@@ -531,7 +532,7 @@ class Payment(models.Model):
 
     def update_payment(self, minconf=1):
         new_amount=Decimal(bitcoin_getbalance(self.address, minconf=minconf))
-        print "blaa", new_amount, self.address
+        print("blaa", new_amount, self.address)
         if new_amount>=self.amount:
             self.amount_paid=new_amount
             self.paid_at=datetime.datetime.now()
@@ -564,24 +565,26 @@ class WalletTransaction(models.Model):
     from_wallet = models.ForeignKey(
         'Wallet',
         null=True,
-        related_name="sent_transactions")
+        related_name="sent_transactions",
+        on_delete=models.DO_NOTHING)
     to_wallet = models.ForeignKey(
         'Wallet',
         null=True,
-        related_name="received_transactions")
+        related_name="received_transactions",
+        on_delete=models.DO_NOTHING)
     to_bitcoinaddress = models.CharField(
         max_length=50,
         blank=True)
-    outgoing_transaction = models.ForeignKey('OutgoingTransaction', null=True, default=None)
+    outgoing_transaction = models.ForeignKey('OutgoingTransaction', null=True, default=None,on_delete=models.DO_NOTHING)
     amount = models.DecimalField(
         max_digits=16,
         decimal_places=8,
         default=Decimal("0.0"))
     description = models.CharField(max_length=100, blank=True)
 
-    deposit_address = models.ForeignKey(BitcoinAddress, null=True)
+    deposit_address = models.ForeignKey(BitcoinAddress, null=True, on_delete=models.DO_NOTHING)
     txid = models.CharField(max_length=100, blank=True, null=True)
-    deposit_transaction = models.OneToOneField(DepositTransaction, null=True)
+    deposit_transaction = models.OneToOneField(DepositTransaction, null=True, on_delete=models.DO_NOTHING)
 
     def __unicode__(self):
         if self.from_wallet and self.to_wallet:
@@ -668,7 +671,7 @@ class Wallet(models.Model):
             addr = new_bitcoin_address()
             updated = BitcoinAddress.objects.select_for_update().filter(Q(id=addr.id) & Q(active=True) & Q(least_received__lte=0) & Q(wallet__isnull=True))\
                           .update(active=True, wallet=self)
-            print "addr_id", addr.id, updated
+            print("addr_id", addr.id, updated)
             # db_transaction.commit()
             if updated:
                 return addr.address
@@ -708,7 +711,7 @@ class Wallet(models.Model):
                 Q(last_balance=avail))\
               .update(last_balance=new_balance, transaction_counter=self.transaction_counter+1)
             if not updated:
-                print "wallet transaction concurrency:", new_balance, avail, self.transaction_counter, self.last_balance, self.total_balance()
+                print("wallet transaction concurrency:", new_balance, avail, self.transaction_counter, self.last_balance, self.total_balance())
                 raise Exception(_("Concurrency error with transactions. Please try again."))
             # db_transaction.commit()
             # concurrency check end
@@ -761,7 +764,7 @@ class Wallet(models.Model):
                 Q(last_balance=avail) )\
               .update(last_balance=new_balance, transaction_counter=self.transaction_counter+1)
             if not updated:
-                print "address transaction concurrency:", new_balance, avail, self.transaction_counter, self.last_balance, self.total_balance()
+                print ("address transaction concurrency:", new_balance, avail, self.transaction_counter, self.last_balance, self.total_balance())
                 raise Exception(_("Concurrency error with transactions. Please try again."))
             # concurrency check end
             outgoing_transaction = OutgoingTransaction.objects.create(amount=amount, to_bitcoinaddress=address,
@@ -1014,10 +1017,10 @@ def update_payments():
     for bp in bps:
         bp.amount_paid=Decimal(bitcoin_getbalance(bp.address))
         bp.save()
-        print bp.amount
-        print bp.amount_paid
+        print( bp.amount)
+        print( bp.amount_paid)
 
-@transaction.commit_on_success
+#@transaction.commit_on_success
 def new_bitcoin_payment(amount):
     bp=BitcoinPayment.objects.filter(active=False)
     if len(bp)<1:
@@ -1034,9 +1037,9 @@ def getNewBitcoinPayment(amount):
                   DeprecationWarning)
     return new_bitcoin_payment(amount)
 
-@transaction.commit_on_success
+#@transaction.commit_on_success
 def new_bitcoin_payment_eur(amount):
-    print bitcoinprice_eur()
+    print( bitcoinprice_eur())
     return new_bitcoin_payment(Decimal(amount)/Decimal(bitcoinprice_eur()['24h']))
 
 def getNewBitcoinPayment_eur(amount):
@@ -1046,12 +1049,13 @@ def getNewBitcoinPayment_eur(amount):
 
 from django_bitcoin import currency
 
-from django.core import urlresolvers
-from django.utils import importlib
+from django.urls import get_mod_func
+from django.utils.module_loading import import_module
+
 
 for dottedpath in settings.BITCOIN_CURRENCIES:
-    mod, func = urlresolvers.get_mod_func(dottedpath)
-    klass = getattr(importlib.import_module(mod), func)
+    mod, func = get_mod_func(dottedpath)
+    klass = getattr(import_module(mod), func)
     currency.exchange.register_currency(klass())
 
 # Historical prie storage
@@ -1078,7 +1082,7 @@ def set_historical_price(curr="EUR"):
     price = sum([m['avg'] for m in markets_currency]) / len(markets_currency)
     hp = HistoricalPrice.objects.create(price=Decimal(str(price)), params=",".join([m['symbol']+"_avg" for m in markets_currency]), currency=curr,
             created_at=datetime.datetime.now())
-    print "Created new",hp
+    print( "Created new",hp)
     return hp
 
 def get_historical_price_object(dt=None, curr="EUR"):

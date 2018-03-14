@@ -2,10 +2,10 @@
 
 import os
 import json
-import jsonrpc
+from django_bitcoin.jsonrpc.authproxy import AuthServiceProxy as ServiceProxy, JSONRPCException
 import sys
 import urllib
-import urllib2
+#import urllib2
 import random
 import hashlib
 import base64
@@ -19,7 +19,7 @@ from django.db import transaction
 from django_bitcoin import settings
 from django_bitcoin import currency
 
-from pywallet import privkey2address
+from django_bitcoin.pywallet import privkey2address
 
 # BITCOIND COMMANDS
 
@@ -34,7 +34,7 @@ def decimal_float(d):
 
 class BitcoindConnection(object):
     def __init__(self, connection_string, main_account_name):
-        self.bitcoind_api = jsonrpc.ServiceProxy(connection_string)
+        self.bitcoind_api = ServiceProxy(connection_string)
         self.account_name = main_account_name
 
     def total_received(self, address, minconf=settings.BITCOIN_MINIMUM_CONFIRMATIONS):
@@ -73,7 +73,7 @@ class BitcoindConnection(object):
         label = "import"
         address_from = privkey2address(key)
         if not address_from or not address_from.startswith("1"):
-            print address_from
+            print (address_from)
             return None
         # print address_from
         try:

@@ -25,7 +25,7 @@ import json
 import jsonrpc
 import sys
 import urllib
-import urllib2
+#import urllib2
 import random
 import hashlib
 import base64
@@ -147,7 +147,7 @@ class BitcoinChartsCurrency(Currency):
             cache.set(self.cache_key, base_price, 60*60)
             #print result
         except:
-            print "Unexpected error:", sys.exc_info()[0]
+            print ("Unexpected error:", sys.exc_info()[0])
 
         if not cache.get(self.cache_key):
             if not cache.get(self.cache_key_old):
@@ -225,8 +225,8 @@ def markets_chart():
                     final_markets[market['symbol'].lower()]=market
             cache.set(cache_key, final_markets, 60*5)
             #print result
-        except Exception, err:
-            print "Unexpected error:", sys.exc_info()[0], err
+        except Exception as err:
+            print("Unexpected error:", sys.exc_info()[0], err)
 
         if not cache.get(cache_key):
             if not cache.get(cache_key_old):
@@ -249,8 +249,8 @@ def currency_exchange_rates():
             j=json.loads(result)
             cache.set(cache_key, j, 60*5)
             #print result
-        except Exception, err:
-            print "Unexpected error:", sys.exc_info()[0], err
+        except Exception as err:
+            print( "Unexpected error:", sys.exc_info()[0], err)
 
         if not cache.get(cache_key):
             if not cache.get(cache_key_old):
@@ -279,8 +279,8 @@ def get_mtgox_rate_table():
             result=f.read()
             j=json.loads(result)
             old_table[c]['24h'] = Decimal(j['vwap']['value'])
-        except Exception, err:
-            print "Unexpected error:", sys.exc_info()[0], err
+        except Exception as err:
+            print( "Unexpected error:", sys.exc_info()[0], err)
 
 
 def get_rate_table():
@@ -293,11 +293,11 @@ def get_rate_table():
             result=f.read()
             j=json.loads(result)
             cache.set(cache_key, j, 60*60)
-            print result
+            print(result)
         # except ValueError:
 
         except:
-            print "Unexpected error:", sys.exc_info()[0]
+            print("Unexpected error:", sys.exc_info()[0])
 
         if not cache.get(cache_key):
             if not cache.get(cache_key_old):
@@ -320,8 +320,8 @@ def currency_exchange_rates():
             j=json.loads(result)
             cache.set(cache_key, j, 60*5)
             #print result
-        except Exception, err:
-            print "Unexpected error:", sys.exc_info()[0], err
+        except Exception as err:
+            print("Unexpected error:", sys.exc_info()[0], err)
 
         if not cache.get(cache_key):
             if not cache.get(cache_key_old):

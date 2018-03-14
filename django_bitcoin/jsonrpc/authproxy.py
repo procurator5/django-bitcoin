@@ -34,11 +34,11 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-import httplib
+import http.client as httplib
 import base64
 import json
 import decimal
-import urlparse
+import urllib.parse as urlparse
 
 USER_AGENT = "AuthServiceProxy/0.1"
 
@@ -60,7 +60,8 @@ class AuthServiceProxy(object):
             port = self.__url.port
         self.__idcnt = 0
         authpair = "%s:%s" % (self.__url.username, self.__url.password)
-        self.__authhdr = "Basic %s" % (base64.b64encode(authpair))
+        
+        self.__authhdr = "Basic %s" % (base64.b64encode(bytearray(authpair, 'utf8')))
         if self.__url.scheme == 'https':
             self.__conn = httplib.HTTPSConnection(self.__url.hostname, port, None, None,False,
                     HTTP_TIMEOUT)
