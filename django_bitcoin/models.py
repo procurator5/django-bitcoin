@@ -8,7 +8,7 @@ import pytz
 from decimal import Decimal
 
 from django.db import models
-from django.contrib.sites.models import Site
+#from django.contrib.sites.models import Site
 from django.contrib.auth.models import User
 
 from django_bitcoin.utils import *
