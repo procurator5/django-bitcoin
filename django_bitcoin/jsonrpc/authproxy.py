@@ -61,12 +61,14 @@ class AuthServiceProxy(object):
         self.__idcnt = 0
         authpair = "%s:%s" % (self.__url.username, self.__url.password)
         
-        self.__authhdr = "Basic %s" % (base64.b64encode(bytearray(authpair, 'utf8')))
+        self.__authhdr = "Basic " + base64.b64encode(authpair.encode('utf-8')).decode("utf-8") 
+#        self.__authhdr = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+        
         if self.__url.scheme == 'https':
             self.__conn = httplib.HTTPSConnection(self.__url.hostname, port, None, None,False,
                     HTTP_TIMEOUT)
         else:
-            self.__conn = httplib.HTTPConnection(self.__url.hostname, port, False,
+            self.__conn = httplib.HTTPConnection(self.__url.hostname, port,
                     HTTP_TIMEOUT)
 
     def __getattr__(self, name):
@@ -82,12 +84,13 @@ class AuthServiceProxy(object):
              'method': self.__serviceName,
              'params': args,
              'id': self.__idcnt})
+        
         self.__conn.request('POST', self.__url.path, postdata,
                  { 'Host' : self.__url.hostname,
                      'User-Agent' : USER_AGENT,
                      'Authorization' : self.__authhdr,
                      'Content-type' : 'application/json' })
-
+        
         httpresp = self.__conn.getresponse()
         if httpresp is None:
             raise JSONRPCException({

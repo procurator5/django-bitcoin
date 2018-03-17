@@ -388,20 +388,20 @@ class BitcoinAddress(models.Model):
 
 def new_bitcoin_address():
     while True:
-        with db_transaction.autocommit():
-            db_transaction.enter_transaction_management()
-            db_transaction.commit()
+        with db_transaction.atomic():
+#            db_transaction.enter_transaction_management()
+#            db_transaction.commit()
             bp = BitcoinAddress.objects.filter(Q(active=False) & Q(wallet__isnull=True) & \
                     Q(least_received__lte=0))
             if len(bp) < 1:
                 refill_payment_queue()
-                db_transaction.commit()
+#               db_transaction.commit()
                 print ("refilling queue...", bp)
             else:
                 bp = bp[0]
                 updated = BitcoinAddress.objects.select_for_update().filter(Q(id=bp.id) & Q(active=False) & Q(wallet__isnull=True) & \
                     Q(least_received__lte=0)).update(active=True)
-                db_transaction.commit()
+#                db_transaction.commit()
                 if updated:
                     return bp
                 else:
