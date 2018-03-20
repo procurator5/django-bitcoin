@@ -1,4 +1,4 @@
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 from time import sleep, time
 from django_bitcoin.utils import bitcoind
 from django_bitcoin.models import BitcoinAddress, DepositTransaction
@@ -9,7 +9,7 @@ import datetime
 RUN_TIME_SECONDS = 60
 
 
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     help = """This needs transactions signaling enabled. Polls\
      incoming transactions via listtransactions -bitcoind call, and checks\
       the balances accordingly.
@@ -19,12 +19,12 @@ class Command(NoArgsCommand):
       balance_changed = django.dispatch.Signal(providing_args=["balance", "changed"])
 """
 
-    def handle_noargs(self, **options):
+    def handle(self, **options):
         start_time = time()
         last_check_time = None
-        print "starting overall1", time() - start_time, datetime.datetime.now()
+        print("starting overall1", time() - start_time, datetime.datetime.now())
         while time() - start_time < float(RUN_TIME_SECONDS):
-            print "starting round", time() - start_time
+            print("starting round", time() - start_time)
             # print "starting standard", time() - start_time
             transactions = bitcoind.bitcoind_api.listtransactions("*", 50, 0)
             for t in transactions:
@@ -45,10 +45,10 @@ class Command(NoArgsCommand):
                             dp.address.query_bitcoind(triggered_tx=t[u'txid'])
                 elif not last_check_time:
                     last_check_time = int(t['time'])
-            print "done listtransactions checking, starting checking least_received>least_received_confirmed", time() - start_time
+            print("done listtransactions checking, starting checking least_received>least_received_confirmed", time() - start_time)
             for ba in BitcoinAddress.objects.filter(active=True,
                 wallet__isnull=False).extra(where=["least_received>least_received_confirmed"]).order_by("?")[:5]:
                 ba.query_bitcoind()
-            print "done, sleeping...", time() - start_time
+            print("done, sleeping...", time() - start_time)
             sleep(1)
-        print "finished all", datetime.datetime.now()
+        print("finished all", datetime.datetime.now())
