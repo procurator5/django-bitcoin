@@ -688,9 +688,9 @@ class Wallet(models.Model):
             amount = Decimal(amount)
         amount = amount.quantize(Decimal('0.00000001'))
 
-        with db_transaction.autocommit():
-            db_transaction.enter_transaction_management()
-            db_transaction.commit()
+        with db_transaction.atomic():
+#            db_transaction.enter_transaction_management()
+#            db_transaction.commit()
             if settings.BITCOIN_UNCONFIRMED_TRANSFERS:
                 avail = self.total_balance_unconfirmed()
             else:
