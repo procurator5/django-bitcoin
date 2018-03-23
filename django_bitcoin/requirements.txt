@@ -1,3 +1,4 @@
 south
 pil
 qrcode
+Image
