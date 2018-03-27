@@ -1,4 +1,3 @@
-
 python manage.py shell_plus
 from django_bitcoin.tasks import query_transactions
 query_transactions()

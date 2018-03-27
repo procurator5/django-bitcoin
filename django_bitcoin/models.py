@@ -867,7 +867,7 @@ class Wallet(models.Model):
             else:
                 return self.total_received(minconf) - self.total_sent()
         else:
-            return self.balance(minconf)[1]
+            return self.balance(minconf)
 
     def total_balance_historical(self, balance_date, minconf=settings.BITCOIN_MINIMUM_CONFIRMATIONS):
         if settings.BITCOIN_TRANSACTION_SIGNALING:
@@ -888,8 +888,7 @@ class Wallet(models.Model):
         if not settings.BITCOIN_UNCONFIRMED_TRANSFERS:
             return self.total_received(0) - self.total_sent()
         else:
-            x = self.balance()
-            return x[0] + x[1]
+            return self.balance()
 
     def unconfirmed_balance(self):
         if not settings.BITCOIN_UNCONFIRMED_TRANSFERS:
@@ -999,7 +998,7 @@ def update_payments():
     for bp in bps:
         bp.amount_paid=Decimal(bitcoin_getbalance(bp.address))
         bp.save()
-        print( bp.amount)
+        print( "update_payments" + bp.amount)
         print( bp.amount_paid)
 
 #@transaction.commit_on_success
