@@ -1,6 +1,8 @@
 from __future__ import with_statement
 
 from django.utils import timezone
+from datetime import timedelta
+
 import random
 import hashlib
 import base64
@@ -361,7 +363,7 @@ class BitcoinAddress(models.Model):
                 return self.least_received
         return self.query_bitcoind(minconf)
 
-    def __unicode__(self):
+    def __str__(self):
         if self.label:
             return u'%s (%s)' % (self.label, self.address)
         return self.address
@@ -633,7 +635,7 @@ class Wallet(models.Model):
             ).update(last_balance=(self.last_balance + amount)) < 1:
             update_wallet_balance(self.id)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"%s: %s" % (self.label,
                             self.created_at.strftime('%Y-%m-%d %H:%M'))
 
@@ -734,9 +736,7 @@ class Wallet(models.Model):
         if amount <= 0:
             raise Exception(_("Can't send zero or negative amounts"))
         # concurrency check
-        with db_transaction.autocommit():
-            db_transaction.enter_transaction_management()
-            db_transaction.commit()
+        with db_transaction.atomic():
             avail = self.total_balance()
             updated = Wallet.objects.filter(Q(id=self.id)).update(last_balance=avail)
             if amount > avail:
@@ -750,7 +750,7 @@ class Wallet(models.Model):
                 raise Exception(_("Concurrency error with transactions. Please try again."))
             # concurrency check end
             outgoing_transaction = OutgoingTransaction.objects.create(amount=amount, to_bitcoinaddress=address,
-                expires_at=timezone.now()+datetime.timedelta(seconds=expires_seconds))
+                expires_at=timezone.now()+timedelta(seconds=expires_seconds))
             bwt = WalletTransaction.objects.create(
                 amount=amount,
                 from_wallet=self,
