@@ -24,12 +24,10 @@ from django.core.cache import cache
 import json
 import jsonrpc
 import sys
-import urllib
-#import urllib2
+import requests
 import random
 import hashlib
 import base64
-from decimal import Decimal
 import decimal
 import warnings
 
@@ -112,7 +110,7 @@ class Money(object):
                                   "with any currency")
         return Money(self.identifier, self.amount / other)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"%s %s" % (self.identifier, self.amount)
 
 class Currency(object):
@@ -139,15 +137,13 @@ class BitcoinChartsCurrency(Currency):
 
     def populate_cache(self):
         try:
-            f = urllib2.urlopen(
-                u"http://bitcoincharts.com/t/weighted_prices.json")
-            result=f.read()
-            j=json.loads(result)
+            result = requests.get(
+                u"http://api.bitcoincharts.com/v1/weighted_prices.json")
+            j=json.loads(result.text)
             base_price = j[self.identifier]
             cache.set(self.cache_key, base_price, 60*60)
-            #print result
-        except:
-            print ("Unexpected error:", sys.exc_info()[0])
+        except Exception as e:
+            print ("Unexpected error: %s" % (str(e)))
 
         if not cache.get(self.cache_key):
             if not cache.get(self.cache_key_old):
@@ -288,16 +284,14 @@ def get_rate_table():
     cache_key_old="bitcoincharts_all_old"
     if not cache.get(cache_key):
         try:
-            f = urllib2.urlopen(
-                u"http://bitcoincharts.com/t/weighted_prices.json")
-            result=f.read()
-            j=json.loads(result)
+            result = requests.get(
+                u"http://api.bitcoincharts.com/v1/weighted_prices.json")
+            j=json.loads(result.text)
             cache.set(cache_key, j, 60*60)
-            print(result)
         # except ValueError:
 
-        except:
-            print("Unexpected error:", sys.exc_info()[0])
+        except Exception as e:
+            print("Unexpected error:", str(e))
 
         if not cache.get(cache_key):
             if not cache.get(cache_key_old):
@@ -314,9 +308,8 @@ def currency_exchange_rates():
     cache_key_old="currency_exchange_rates_old"
     if not cache.get(cache_key):
         try:
-            f = urllib2.urlopen(
+            result = urllib2.urlopen(
                 settings.BITCOIN_OPENEXCHANGERATES_URL)
-            result=f.read()
             j=json.loads(result)
             cache.set(cache_key, j, 60*5)
             #print result
@@ -340,10 +333,10 @@ def big_currency_list():
 
 def get_currency_rate(currency="USD", rate_period="24h"):
     try:
-        return Decimal(get_rate_table()[currency][rate_period])
+        return decimal.Decimal(get_rate_table()[currency][rate_period])
     except KeyError:
         try:
-            return Decimal(currency_exchange_rates()['rates'][currency])*Decimal(get_rate_table()['USD'][rate_period])
+            return decimal.Decimal(currency_exchange_rates()['rates'][currency])*Decimal(get_rate_table()['USD'][rate_period])
         except:
             return None
 
@@ -353,7 +346,7 @@ def btc2currency(amount, currency="USD", rate_period="24h"):
     rate=get_currency_rate(currency, rate_period)
     if rate==None:
         return None
-    return (amount*rate).quantize(Decimal("0.01"))
+    return (amount*rate).quantize(decimal.Decimal("0.01"))
 
 def currency2btc(amount, currency="USD", rate_period="24h"):
     if currency == "BTC":
