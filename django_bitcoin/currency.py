@@ -346,7 +346,11 @@ def btc2currency(amount, currency="USD", rate_period="24h"):
     rate=get_currency_rate(currency, rate_period)
     if rate==None:
         return None
-    return (amount*rate).quantize(decimal.Decimal("0.01"))
+
+    if amount == None:
+        return amount
+    
+    return (decimal.Decimal(amount) * rate).quantize(decimal.Decimal("1.00"))
 
 def currency2btc(amount, currency="USD", rate_period="24h"):
     if currency == "BTC":
@@ -354,6 +358,6 @@ def currency2btc(amount, currency="USD", rate_period="24h"):
     rate=get_currency_rate(currency, rate_period)
     if rate==None:
         return None
-    return (amount/rate).quantize(Decimal("0.00000001"))
+    return (amount/rate).quantize(decimal.Decimal("0.00000001"))
 
 
